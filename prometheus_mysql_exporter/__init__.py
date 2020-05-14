@@ -36,13 +36,17 @@ class QueryMetricCollector(object):
             yield from gauge_generator(metrics)
 
 
-def run_query(mysql_client, dbs, name, query, value_columns):
+def run_query(mysql_client, dbs, name, timezone, query, value_columns):
     metrics = []
 
     for db in dbs:
         try:
             mysql_client.select_db(db)
             with mysql_client.cursor() as cursor:
+
+                if timezone:
+                    cursor.execute(f"set time_zone = '{timezone}'")
+
                 cursor.execute(query)
                 raw_response = cursor.fetchall()
 
@@ -97,6 +101,8 @@ def validate_server_address(ctx, param, address_string):
               help='MySQL user to run queries as. (default: root)')
 @click.option('--mysql-password', '-P', default='',
               help='Password for the MySQL user, if required. (default: no password)')
+@click.option('--mysql-local-timezone', '-Z', default='',
+              help='Local timezone for sql commands like NOW(). (default: use server timezone)')
 @click.option('--json-logging', '-j', default=False, is_flag=True,
               help='Turn on json logging.')
 @click.option('--log-level', default='INFO',
@@ -126,6 +132,7 @@ def cli(**options):
 
     username = options['mysql_user']
     password = options['mysql_password']
+    timezone = options['mysql_local_timezone']
 
     config = configparser.ConfigParser()
     config.read_file(options['config_file'])
@@ -155,7 +162,7 @@ def cli(**options):
 
     for name, (interval, query, value_columns) in queries.items():
         schedule_job(scheduler, interval,
-                     run_query, mysql_client, dbs, name, query, value_columns)
+                     run_query, mysql_client, dbs, name, timezone, query, value_columns)
 
     REGISTRY.register(QueryMetricCollector())
 
