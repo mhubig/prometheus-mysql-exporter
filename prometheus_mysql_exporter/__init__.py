@@ -45,7 +45,7 @@ def run_query(mysql_client, dbs, name, timezone, query, value_columns):
             with mysql_client.cursor() as cursor:
 
                 if timezone:
-                    cursor.execute(f"set time_zone = '{timezone}'")
+                    cursor.execute("set time_zone = '{}'".format(timezone))
 
                 cursor.execute(query)
                 raw_response = cursor.fetchall()
